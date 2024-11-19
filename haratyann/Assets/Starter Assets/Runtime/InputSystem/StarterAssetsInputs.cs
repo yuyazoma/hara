@@ -24,7 +24,9 @@ namespace StarterAssets
 		public void OnMove(InputValue value)
 		{
 			MoveInput(value.Get<Vector2>());
-		}
+		    string str = string.Format("x{0} y{1}", value.Get<Vector2>().x, value.Get<Vector2>().y);
+	        Debug.Log(str);
+	    }
 
 		public void OnLook(InputValue value)
 		{
@@ -37,6 +39,8 @@ namespace StarterAssets
 		public void OnJump(InputValue value)
 		{
 			JumpInput(value.isPressed);
+			string str = string.Format("{0}", value.isPressed);
+	Debug.Log(str);
 		}
 
 		public void OnSprint(InputValue value)
@@ -46,7 +50,7 @@ namespace StarterAssets
 #endif
 
 
-		public void MoveInput(Vector2 newMoveDirection)
+        public void MoveInput(Vector2 newMoveDirection)
 		{
 			move = newMoveDirection;
 		} 
