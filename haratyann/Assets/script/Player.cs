@@ -16,9 +16,12 @@ public class Player : MonoBehaviour
     public bool[] jklToggle = new bool[3];
     public float startTime;
 
+    private Rigidbody rb;
+
     void Start()
     {
-        moveValue = 0.01f;
+        rb = GetComponent<Rigidbody>();
+        moveValue = 3f; // Increased for rolling effect
         jumpValue = 5f;
         debugText.text = "debug";
         sw[0] = 1; sw[1] = 1; sw[2] = 1;
@@ -32,52 +35,56 @@ public class Player : MonoBehaviour
         startTime = -1;
     }
 
-    void Update()
+    void FixedUpdate()
     {
         var current = Keyboard.current;
 
         if (current == null)
             return;
 
-        // Right movement
-        if (current.rightArrowKey.isPressed || sw[0] == 0 || vol[0] > 2600)
+        // Smoothly stop movement when vol[0] and vol[1] are within the specified range
+        if (vol[0] >= 2100 && vol[0] <= 2400 && vol[1] >= 2300 && vol[1] <= 2600)
         {
-            this.transform.position += new Vector3(moveValue, 0f, 0f);
-            if (current.rightArrowKey.isPressed || sw[0] == 0 || vol[0] > 4090)
-                this.transform.position += new Vector3(2 * moveValue, 0f, 0f);
+            rb.velocity = Vector3.Lerp(rb.velocity, Vector3.zero, 0.001f);
+            rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, Vector3.zero, 0.1f);
+            return;
+        }
+
+        // Right movement
+        if (current.rightArrowKey.isPressed || LRStick.GetKeyH() || vol[0] > 2600)
+        {
+            Vector3 force = Vector3.right * moveValue;
+            rb.AddForce(force, ForceMode.Force);
         }
 
         // Left movement
-        if (current.leftArrowKey.isPressed || sw[1] == 0 || vol[0] < 2200)
+        if (current.leftArrowKey.isPressed || LRStick.GetKeyL() || vol[0] < 2200)
         {
-            this.transform.position += new Vector3(-moveValue, 0f, 0f);
-            if (current.leftArrowKey.isPressed || sw[1] == 0 || vol[0] < 1000)
-                this.transform.position += new Vector3(-2 * moveValue, 0f, 0f);
+            Vector3 force = Vector3.left * moveValue;
+            rb.AddForce(force, ForceMode.Force);
         }
 
         // Forward (up) movement along Z-axis
-        if (current.upArrowKey.isPressed || sw[0] == 0 || vol[1] > 2600)
+        if (current.upArrowKey.isPressed || UDStick.GetKeyH() || vol[1] > 2600)
         {
-            this.transform.position += new Vector3(0f, 0f, moveValue); // Z軸方向に前進
-            if (current.upArrowKey.isPressed || sw[0] == 0 || vol[1] > 4090)
-                this.transform.position += new Vector3(0f, 0f, 2 * moveValue);
+            Vector3 force = Vector3.forward * moveValue;
+            rb.AddForce(force, ForceMode.Force);
         }
 
         // Backward (down) movement along Z-axis
-        if (current.downArrowKey.isPressed || sw[1] == 0 || vol[1] < 2200)
+        if (current.downArrowKey.isPressed || UDStick.GetKeyL() || vol[1] < 2200)
         {
-            this.transform.position += new Vector3(0f, 0f, -moveValue); // Z軸方向に後退
-            if (current.downArrowKey.isPressed || sw[1] == 0 || vol[1] < 1000)
-                this.transform.position += new Vector3(0f, 0f, -2 * moveValue);
+            Vector3 force = Vector3.back * moveValue;
+            rb.AddForce(force, ForceMode.Force);
         }
 
         // Jump
         if (current.zKey.wasPressedThisFrame || (sw[2] == 0 && swPre[2] == 1))
         {
-            GetComponent<Rigidbody>().velocity = Vector3.up * jumpValue;
+            rb.AddForce(Vector3.up * jumpValue, ForceMode.Impulse);
         }
 
-        if(current.jKey.wasPressedThisFrame)
+        if (current.jKey.wasPressedThisFrame)
         {
             jklPress[0] = true;
             jklToggle[0] = !jklToggle[0];
@@ -109,6 +116,7 @@ public class Player : MonoBehaviour
                 startTime = -1;
             }
         }
+
         // Update debug text
         string str = string.Format("vol: {0}, {1}, sw: {2}, {3}, {4}", vol[0], vol[1], sw[0], sw[1], sw[2]);
         debugText.text = str;
@@ -117,12 +125,6 @@ public class Player : MonoBehaviour
             swPre[i] = sw[i];
     }
 }
-
-
-// アナログ値をデジタル値に変換するクラス
-// HIGH側しきい値を超えたときに1、LOW側しきい値を下回ったときに-1、その他は0に変換する。
-// GetKeyDown* で押したとき、GetKeyUp* で離したとき、GetKey* で連射対策前のデータが取得できる。
-// コンストラクタでしきい値を設定、ループ処理の最後でupdateを呼ぶ。
 
 public class VolToSw
 {
@@ -163,18 +165,18 @@ public class VolToSw
             else
             {
                 currentSwStateH = 1;
-                
+
             }
 
             if (value < thresholdLowValue)
             {
                 currentSwStateL = 0;
-             
+
             }
             else
             {
                 currentSwStateL = 1;
-                
+
             }
         }
 
@@ -190,57 +192,31 @@ public class VolToSw
 
     public bool GetKeyDownH()
     {
-        if (preparation && previousSwStateH == 1 && currentSwStateH == 0)
-        {
-            string str = string.Format("val:{0}, DownH", Vol);
-            Debug.Log(str);
-
-            return true;
-        }
-        else
-            return false;
+        return preparation && previousSwStateH == 1 && currentSwStateH == 0;
     }
 
     public bool GetKeyUpH()
     {
-        if (preparation && previousSwStateH == 0 && currentSwStateH == 1)
-        {
-            string str = string.Format("val:{0}, UpH", Vol);
-            Debug.Log(str);
-            return true;
-        }
-        else
-            return false;
+        return preparation && previousSwStateH == 0 && currentSwStateH == 1;
     }
 
     public bool GetKeyH()
     {
-        if (currentSwStateH == 0)
-            return true;
-        else
-            return false;
+        return currentSwStateH == 0;
     }
+
     public bool GetKeyDownL()
     {
-        if (preparation && currentSwStateL == 0 && previousSwStateL == 1)
-            return true;
-        else
-            return false;
+        return preparation && currentSwStateL == 0 && previousSwStateL == 1;
     }
 
     public bool GetKeyUpL()
     {
-        if (preparation && currentSwStateL == 1 && previousSwStateL == 0)
-            return true;
-        else
-            return false;
+        return preparation && currentSwStateL == 1 && previousSwStateL == 0;
     }
 
     public bool GetKeyL()
     {
-        if (currentSwStateL == 0)
-            return true;
-        else
-            return false;
+        return currentSwStateL == 0;
     }
 }
