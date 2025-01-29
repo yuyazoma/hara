@@ -29,7 +29,7 @@ public class DoSomething : MonoBehaviour
 
         // 信号受信時に呼ばれる関数としてOnDataReceived関数を登録
         serialHandler.OnDataReceived += OnDataReceived;
-        targetModel = GameObject.Find("harazemichan");
+        targetModel = GameObject.Find("harazemichan_ball");
         targetUnityChanScript = targetModel.GetComponent<StarterAssetsInputs>();
 
     }
@@ -164,17 +164,7 @@ public class DoSomething : MonoBehaviour
             isMoveChange = true;
         }
 
-        if (isMoveChange)
-        {
-            targetUnityChanScript.MoveInput(new Vector2(x, y));
-        }
-
         targetScript.LRStick.Update();
         targetScript.UDStick.Update();
-
-        //targetScript.debugText.text = message;
-        if (targetScript.sw[2] == 0 && targetScript.swPre[2] == 1)
-            targetUnityChanScript.JumpInput(true);
-        // ここでデコード処理等を記述
     }
 }

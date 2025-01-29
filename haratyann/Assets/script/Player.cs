@@ -21,8 +21,8 @@ public class Player : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        moveValue = 3f; // Increased for rolling effect
-        jumpValue = 5f;
+        moveValue = 1f; // Rolling movement speed
+        jumpValue = 1f;
         debugText.text = "debug";
         sw[0] = 1; sw[1] = 1; sw[2] = 1;
         vol[0] = 2300; vol[1] = 2300;
@@ -38,45 +38,47 @@ public class Player : MonoBehaviour
     void FixedUpdate()
     {
         var current = Keyboard.current;
+        if (current == null) return;
 
-        if (current == null)
-            return;
+        // Get Camera Direction
+        Vector3 cameraForward = Camera.main.transform.forward;
+        cameraForward.y = 0;
+        cameraForward.Normalize();
 
-        // Smoothly stop movement when vol[0] and vol[1] are within the specified range
-        if (vol[0] >= 2100 && vol[0] <= 2400 && vol[1] >= 2300 && vol[1] <= 2600)
+        Vector3 cameraRight = Camera.main.transform.right;
+        cameraRight.y = 0;
+        cameraRight.Normalize();
+
+        Vector3 movement = Vector3.zero;
+
+        // Stop movement smoothly if within threshold
+        if (vol[0] >= 1800 && vol[0] <= 3000 && vol[1] >= 1800 && vol[1] <= 3000)
         {
             rb.velocity = Vector3.Lerp(rb.velocity, Vector3.zero, 0.001f);
             rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, Vector3.zero, 0.1f);
             return;
         }
 
-        // Right movement
-        if (current.rightArrowKey.isPressed || LRStick.GetKeyH() || vol[0] > 2600)
-        {
-            Vector3 force = Vector3.right * moveValue;
-            rb.AddForce(force, ForceMode.Force);
-        }
+        // Calculate movement input
+        if (current.rightArrowKey.isPressed || LRStick.GetKeyH() || vol[0] > 3000)
+            movement += cameraRight;
+        if (current.leftArrowKey.isPressed || LRStick.GetKeyL() || vol[0] < 1800)
+            movement -= cameraRight;
+        if (current.upArrowKey.isPressed || UDStick.GetKeyH() || vol[1] > 3000)
+            movement += cameraForward;
+        if (current.downArrowKey.isPressed || UDStick.GetKeyL() || vol[1] < 1800)
+            movement -= cameraForward;
 
-        // Left movement
-        if (current.leftArrowKey.isPressed || LRStick.GetKeyL() || vol[0] < 2200)
-        {
-            Vector3 force = Vector3.left * moveValue;
-            rb.AddForce(force, ForceMode.Force);
-        }
+        // Normalize movement
+        if (movement.magnitude > 1)
+            movement = movement.normalized;
 
-        // Forward (up) movement along Z-axis
-        if (current.upArrowKey.isPressed || UDStick.GetKeyH() || vol[1] > 2600)
-        {
-            Vector3 force = Vector3.forward * moveValue;
-            rb.AddForce(force, ForceMode.Force);
-        }
+        // Reduce speed when moving backward
+        if (Vector3.Dot(cameraForward, movement) < 0)
+            movement *= 0.8f;
 
-        // Backward (down) movement along Z-axis
-        if (current.downArrowKey.isPressed || UDStick.GetKeyL() || vol[1] < 2200)
-        {
-            Vector3 force = Vector3.back * moveValue;
-            rb.AddForce(force, ForceMode.Force);
-        }
+        // Apply movement force
+        rb.AddForce(movement * moveValue, ForceMode.Force);
 
         // Jump
         if (current.zKey.wasPressedThisFrame || (sw[2] == 0 && swPre[2] == 1))
@@ -84,27 +86,11 @@ public class Player : MonoBehaviour
             rb.AddForce(Vector3.up * jumpValue, ForceMode.Impulse);
         }
 
-        if (current.jKey.wasPressedThisFrame)
-        {
-            jklPress[0] = true;
-            jklToggle[0] = !jklToggle[0];
-        }
-        if (current.kKey.wasPressedThisFrame)
-        {
-            jklPress[1] = true;
-            jklToggle[1] = true;
-        }
-        if (current.kKey.wasReleasedThisFrame)
-        {
-            jklPress[1] = true;
-            jklToggle[1] = false;
-        }
-        if (current.lKey.wasPressedThisFrame)
-        {
-            jklPress[2] = true;
-            jklToggle[2] = true;
-            startTime = 0;
-        }
+        // JKL key toggles
+        if (current.jKey.wasPressedThisFrame) { jklPress[0] = true; jklToggle[0] = !jklToggle[0]; }
+        if (current.kKey.wasPressedThisFrame) { jklPress[1] = true; jklToggle[1] = true; }
+        if (current.kKey.wasReleasedThisFrame) { jklPress[1] = true; jklToggle[1] = false; }
+        if (current.lKey.wasPressedThisFrame) { jklPress[2] = true; jklToggle[2] = true; startTime = 0; }
 
         if (startTime >= 0f)
         {
@@ -118,105 +104,77 @@ public class Player : MonoBehaviour
         }
 
         // Update debug text
-        string str = string.Format("vol: {0}, {1}, sw: {2}, {3}, {4}", vol[0], vol[1], sw[0], sw[1], sw[2]);
-        debugText.text = str;
+        debugText.text = string.Format("vol: {0}, {1}, sw: {2}, {3}, {4}", vol[0], vol[1], sw[0], sw[1], sw[2]);
 
         for (int i = 0; i < swPre.Length; i++)
             swPre[i] = sw[i];
     }
-}
-
-public class VolToSw
-{
-    int vol;
-    int previousValue;
-    int previousSwStateL;
-    int currentSwStateL;
-    int previousSwStateH;
-    int currentSwStateH;
-    int thresholdLowValue;
-    int thresholdHighValue;
-
-    bool preparation;
-
-    public VolToSw(int thresholdLow, int thresholdHigh)
+    public class VolToSw
     {
-        thresholdLowValue = thresholdLow;
-        thresholdHighValue = thresholdHigh;
-        previousValue = -1;
-        preparation = false;
-    }
+        int vol;
+        int previousValue;
+        int previousSwStateL;
+        int currentSwStateL;
+        int previousSwStateH;
+        int currentSwStateH;
+        int thresholdLowValue;
+        int thresholdHighValue;
 
-    public int Vol
-    {
-        set
+        bool preparation;
+
+        public VolToSw(int thresholdLow, int thresholdHigh)
         {
-            this.vol = value;
-            if (previousValue > -1)
-            {
-                preparation = true;
-            }
-
-            if (value > thresholdHighValue)
-            {
-                currentSwStateH = 0;
-
-            }
-            else
-            {
-                currentSwStateH = 1;
-
-            }
-
-            if (value < thresholdLowValue)
-            {
-                currentSwStateL = 0;
-
-            }
-            else
-            {
-                currentSwStateL = 1;
-
-            }
+            thresholdLowValue = thresholdLow;
+            thresholdHighValue = thresholdHigh;
+            previousValue = -1;
+            preparation = false;
         }
 
-        get { return vol; }
+        public int Vol
+        {
+            set
+            {
+                this.vol = value;
+                if (previousValue > -1)
+                {
+                    preparation = true;
+                }
+
+                if (value > thresholdHighValue)
+                {
+                    currentSwStateH = 0;
+                }
+                else
+                {
+                    currentSwStateH = 1;
+                }
+
+                if (value < thresholdLowValue)
+                {
+                    currentSwStateL = 0;
+                }
+                else
+                {
+                    currentSwStateL = 1;
+                }
+            }
+
+            get { return vol; }
+        }
+
+        public void Update()
+        {
+            previousValue = vol;
+            previousSwStateH = currentSwStateH;
+            previousSwStateL = currentSwStateL;
+        }
+
+        public bool GetKeyDownH() => preparation && previousSwStateH == 1 && currentSwStateH == 0;
+        public bool GetKeyUpH() => preparation && previousSwStateH == 0 && currentSwStateH == 1;
+        public bool GetKeyH() => currentSwStateH == 0;
+        public bool GetKeyDownL() => preparation && currentSwStateL == 0 && previousSwStateL == 1;
+        public bool GetKeyUpL() => preparation && previousSwStateL == 1 && currentSwStateL == 0;
+        public bool GetKeyL() => currentSwStateL == 0;
     }
 
-    public void Update()
-    {
-        previousValue = vol;
-        previousSwStateH = currentSwStateH;
-        previousSwStateL = currentSwStateL;
-    }
-
-    public bool GetKeyDownH()
-    {
-        return preparation && previousSwStateH == 1 && currentSwStateH == 0;
-    }
-
-    public bool GetKeyUpH()
-    {
-        return preparation && previousSwStateH == 0 && currentSwStateH == 1;
-    }
-
-    public bool GetKeyH()
-    {
-        return currentSwStateH == 0;
-    }
-
-    public bool GetKeyDownL()
-    {
-        return preparation && currentSwStateL == 0 && previousSwStateL == 1;
-    }
-
-    public bool GetKeyUpL()
-    {
-        return preparation && currentSwStateL == 1 && previousSwStateL == 0;
-    }
-
-    public bool GetKeyL()
-    {
-        return currentSwStateL == 0;
-    }
 }
