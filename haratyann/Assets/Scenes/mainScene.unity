@@ -896,8 +896,8 @@ MonoBehaviour:
   sw: 000000000000000000000000
   vol: 0000000000000000
   swPre: 000000000000000000000000
-  jklPress: 000000
-  jklToggle: 000000
+  jklPress: 010101
+  jklToggle: 010101
   startTime: 0
 --- !u!23 &529939742
 MeshRenderer:
