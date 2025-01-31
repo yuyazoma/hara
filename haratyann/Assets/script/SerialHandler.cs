@@ -1,12 +1,7 @@
-﻿// Unityでシリアル通信、Arduinoと連携する雛形
-// シリアル通信を制御するクラス
-// 例えば空のGameObjectでも作って、それに関連付けする
-
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-using System.IO.Ports; // これを通すために、Api Compatibility Levelの設定を変更
+using System.IO.Ports;
 using System.Threading;
 
 public class SerialHandler : MonoBehaviour
@@ -14,8 +9,6 @@ public class SerialHandler : MonoBehaviour
     public delegate void SerialDataReceivedEventHandler(string message);
     public event SerialDataReceivedEventHandler OnDataReceived;
 
-    // COM10以上は\\\\.\\を付加しないと開けない。
-    // portNameに直接代入するとなぜか失敗するので、ここでいったん別の変数に代入
     string myPortName = "\\\\.\\COM3";
     public int bitRate = 115200;
 
@@ -27,12 +20,6 @@ public class SerialHandler : MonoBehaviour
     private string message_;
     private bool isNewMessageReceived_ = false;
 
-    // Use this for initialization
-    void Start()
-    {
-
-    }
-
     void Awake()
     {
         portName = myPortName;
@@ -41,11 +28,11 @@ public class SerialHandler : MonoBehaviour
 
     void Update()
     {
-        if (isNewMessageReceived_)
+        if (isNewMessageReceived_ && OnDataReceived != null)
         {
             OnDataReceived(message_);
+            isNewMessageReceived_ = false;
         }
-        isNewMessageReceived_ = false;
     }
 
     void OnDestroy()
@@ -55,17 +42,22 @@ public class SerialHandler : MonoBehaviour
 
     private void Open()
     {
-        serialPort_ = new SerialPort(portName, bitRate, Parity.None, 8, StopBits.One);
+        try
+        {
+            serialPort_ = new SerialPort(portName, bitRate, Parity.None, 8, StopBits.One);
+            serialPort_.RtsEnable = true;
+            serialPort_.DtrEnable = true;
 
-        serialPort_.RtsEnable = true;
-        serialPort_.DtrEnable = true;
+            serialPort_.Open();
+            isRunning_ = true;
 
-        serialPort_.Open();
-
-        isRunning_ = true;
-
-        thread_ = new Thread(Read);
-        thread_.Start();
+            thread_ = new Thread(Read);
+            thread_.Start();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to open serial port {portName}: {e.Message}");
+        }
     }
 
     private void Close()
@@ -75,8 +67,7 @@ public class SerialHandler : MonoBehaviour
 
         if (thread_ != null && thread_.IsAlive)
         {
-            //thread_.Join();
-            thread_.Abort();
+            thread_.Join(); // 安全にスレッドを終了
         }
 
         if (serialPort_ != null && serialPort_.IsOpen)
@@ -106,11 +97,19 @@ public class SerialHandler : MonoBehaviour
     {
         try
         {
-            serialPort_.Write(message);
+            if (serialPort_ != null && serialPort_.IsOpen)
+            {
+                serialPort_.Write(message);
+                Debug.Log($"Sent to Arduino: {message}");
+            }
+            else
+            {
+                Debug.LogWarning("Serial port is not open!");
+            }
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning(e.Message);
+            Debug.LogWarning($"Serial write error: {e.Message}");
         }
     }
 }
