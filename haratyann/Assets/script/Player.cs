@@ -87,10 +87,27 @@ public class Player : MonoBehaviour
         }
 
         // JKL key toggles
-        if (current.jKey.wasPressedThisFrame) { jklPress[0] = true; jklToggle[0] = !jklToggle[0]; }
-        if (current.kKey.wasPressedThisFrame) { jklPress[1] = true; jklToggle[1] = true; }
-        if (current.kKey.wasReleasedThisFrame) { jklPress[1] = true; jklToggle[1] = false; }
-        if (current.lKey.wasPressedThisFrame) { jklPress[2] = true; jklToggle[2] = true; startTime = 0; }
+        if (current.jKey.wasPressedThisFrame)
+        {
+            jklPress[0] = true;
+            jklToggle[0] = !jklToggle[0];
+        }
+        if (current.kKey.wasPressedThisFrame)
+        {
+            jklPress[1] = true;
+            jklToggle[1] = true;
+        }
+        if (current.kKey.wasReleasedThisFrame)
+        {
+            jklPress[1] = true;
+            jklToggle[1] = false;
+        }
+        if (current.lKey.wasPressedThisFrame)
+        {
+            jklPress[2] = true;
+            jklToggle[2] = true;
+            startTime = 0;
+        }
 
         if (startTime >= 0f)
         {

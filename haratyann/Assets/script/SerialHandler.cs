@@ -99,7 +99,9 @@ public class SerialHandler : MonoBehaviour
         {
             if (serialPort_ != null && serialPort_.IsOpen)
             {
+                serialPort_.DiscardOutBuffer(); // 🔹 バッファをクリア
                 serialPort_.Write(message);
+                serialPort_.BaseStream.Flush(); // 🔹 即時送信を保証
                 Debug.Log($"Sent to Arduino: {message}");
             }
             else
