@@ -60,14 +60,15 @@ public class Player : MonoBehaviour
         }
 
         // Calculate movement input
-        if (current.rightArrowKey.isPressed || LRStick.GetKeyH() || vol[0] > 3000)
+        if (current.rightArrowKey.isPressed || LRStick.GetKeyH() || (vol[0] > 3000))
             movement += cameraRight;
-        if (current.leftArrowKey.isPressed || LRStick.GetKeyL() || vol[0] < 1800)
+        if (current.leftArrowKey.isPressed || LRStick.GetKeyL() || (vol[0] < 1800))
             movement -= cameraRight;
-        if (current.upArrowKey.isPressed || UDStick.GetKeyH() || vol[1] > 3000)
+        if (current.upArrowKey.isPressed || UDStick.GetKeyH() || (vol[1] > 3000))
             movement += cameraForward;
-        if (current.downArrowKey.isPressed || UDStick.GetKeyL() || vol[1] < 1800)
+        if (current.downArrowKey.isPressed || UDStick.GetKeyL() || (vol[1] < 1800))
             movement -= cameraForward;
+
 
         // Normalize movement
         if (movement.magnitude > 1)
